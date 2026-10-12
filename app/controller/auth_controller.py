@@ -23,6 +23,7 @@ def registro(body: RegistroRequest, db: Session = Depends(get_db)):
         role="empresa",
         nome=body.nome,
         cliente_id=str(uuid.uuid4()),
+        ativo=False,
     )
     db.add(usuario)
     db.commit()
@@ -40,7 +41,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
             detail="Credenciais inválidas",
         )
     if not usuario.ativo:
-        raise HTTPException(status_code=403, detail="Conta desativada")
+        raise HTTPException(status_code=403, detail="Conta aguardando aprovação do administrador")
     token = criar_token({
         "sub": str(usuario.id),
         "email": usuario.email,

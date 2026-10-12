@@ -24,5 +24,6 @@ class UsuarioResponse(BaseModel):
     nome: str
     role: str
     cliente_id: str
+    ativo: bool
 
     model_config = {"from_attributes": True}

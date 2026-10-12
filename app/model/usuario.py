@@ -17,4 +17,7 @@ class Usuario(Base):
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
     cliente_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # default True no ORM; empresa é criada com ativo=False no controller.
+    # Para sincronizar o default do banco:
+    #   ALTER TABLE usuarios ALTER COLUMN ativo SET DEFAULT false;
     ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

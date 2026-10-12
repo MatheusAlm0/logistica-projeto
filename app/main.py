@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.controller import (
+    admin_controller,
     auth_controller,
     checkpoint_controller,
     entrega_controller,
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Previsor de Atrasos Logísticos", version="0.4.0", lifespan=lifespan)
+app.include_router(admin_controller.router)
 app.include_router(auth_controller.router)
 app.include_router(previsao_controller.router)
 app.include_router(entrega_controller.router)
