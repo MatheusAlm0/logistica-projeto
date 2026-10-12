@@ -9,8 +9,8 @@ export interface EntregasParams {
 }
 
 export async function getEntregas(params?: EntregasParams): Promise<Entrega[]> {
-  const { data } = await api.get<Entrega[]>("/entregas", { params })
-  return data
+  const { data } = await api.get<{ total: number; items: Entrega[] }>("/entregas", { params })
+  return Array.isArray(data) ? data : (data.items ?? [])
 }
 
 export async function getEntrega(id: number): Promise<Entrega> {

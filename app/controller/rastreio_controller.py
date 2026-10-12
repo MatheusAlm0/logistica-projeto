@@ -16,6 +16,11 @@ router = APIRouter(prefix="/rastreio", tags=["rastreio"])
 class RastreioResponse(BaseModel):
     codigo_rastreio: str
     status: str
+    estado_origem: Optional[str] = None
+    estado_destino: Optional[str] = None
+    data_prevista: Optional[str] = None
+    data_prevista_revisada: Optional[str] = None
+    data_entregue: Optional[str] = None
     ultima_previsao: Optional[PrevisaoEmbutida] = None
     checkpoints: list[CheckpointResponse] = []
 
@@ -30,6 +35,11 @@ def rastrear(codigo: str, db: Session = Depends(get_db)):
     return RastreioResponse(
         codigo_rastreio=entrega.codigo_rastreio,
         status=entrega.status,
+        estado_origem=entrega.estado_origem,
+        estado_destino=entrega.estado_destino,
+        data_prevista=entrega.data_prevista.isoformat() if entrega.data_prevista else None,
+        data_prevista_revisada=entrega.data_prevista_revisada.isoformat() if entrega.data_prevista_revisada else None,
+        data_entregue=entrega.data_entregue.isoformat() if entrega.data_entregue else None,
         ultima_previsao=PrevisaoEmbutida.model_validate(ultima) if ultima else None,
         checkpoints=[CheckpointResponse.model_validate(c) for c in entrega.checkpoints],
     )

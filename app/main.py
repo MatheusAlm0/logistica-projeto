@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.controller import (
@@ -35,6 +36,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Previsor de Atrasos Logísticos", version="0.4.0", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(admin_controller.router)
 app.include_router(auth_controller.router)
 app.include_router(previsao_controller.router)
