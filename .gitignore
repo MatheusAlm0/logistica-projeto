@@ -4,3 +4,7 @@ __pycache__/
 .env
 *.joblib
 data/dump_logistica.sql
+
+__pycache__/
+*.pyc
+.env
