@@ -1,0 +1,261 @@
+{
+  "info": {
+    "name": "Previsor de Atrasos Logísticos",
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Saúde",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8000/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Autenticação",
+      "item": [
+        {
+          "name": "Registrar empresa",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"empresa@exemplo.com\",\n  \"senha\": \"senha123\",\n  \"nome\":  \"Empresa Exemplo Ltda\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": "http://localhost:8000/auth/registro"
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"empresa@exemplo.com\",\n  \"senha\": \"senha123\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": "http://localhost:8000/auth/login"
+          }
+        },
+        {
+          "name": "Meu perfil",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer SEU_TOKEN_AQUI"}],
+            "url": "http://localhost:8000/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rastreio (público)",
+      "item": [
+        {
+          "name": "Rastrear entrega por código",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8000/rastreio/TRK-A1B2C3D4"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Previsões",
+      "item": [
+        {
+          "name": "Prever risco de atraso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type",  "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer SEU_TOKEN_AQUI"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_pedido\":    \"2024-06-10T09:00:00\",\n  \"data_prevista\":  \"2024-06-25T18:00:00\",\n  \"peso_g\":         2400,\n  \"valor\":          480.00,\n  \"frete\":          62.00,\n  \"estado_origem\":  \"SP\",\n  \"estado_destino\": \"PA\",\n  \"origem_lat\":     -23.5505,\n  \"origem_lng\":     -46.6333,\n  \"destino_lat\":    -1.4558,\n  \"destino_lng\":    -48.4902\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": "http://localhost:8000/previsoes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Entregas",
+      "item": [
+        {
+          "name": "Criar entrega",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type",  "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer SEU_TOKEN_AQUI"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_pedido\":    \"2024-06-10T09:00:00\",\n  \"data_prevista\":  \"2024-06-25T18:00:00\",\n  \"peso_g\":         2400,\n  \"valor\":          480.00,\n  \"frete\":          62.00,\n  \"estado_origem\":  \"SP\",\n  \"estado_destino\": \"PA\",\n  \"origem_lat\":     -23.5505,\n  \"origem_lng\":     -46.6333,\n  \"destino_lat\":    -1.4558,\n  \"destino_lng\":    -48.4902\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": "http://localhost:8000/entregas"
+          }
+        },
+        {
+          "name": "Listar entregas",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer SEU_TOKEN_AQUI"}],
+            "url": {
+              "raw": "http://localhost:8000/entregas?limit=10&offset=0",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["entregas"],
+              "query": [
+                {"key": "limit",          "value": "10"},
+                {"key": "offset",         "value": "0"},
+                {"key": "status",         "value": "pendente",  "disabled": true},
+                {"key": "estado_destino", "value": "SP",        "disabled": true}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Detalhar entrega",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer SEU_TOKEN_AQUI"}],
+            "url": "http://localhost:8000/entregas/1"
+          }
+        },
+        {
+          "name": "Finalizar entrega",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key": "Content-Type",  "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer SEU_TOKEN_AQUI"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_entregue\": \"2024-06-22T14:30:00\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": "http://localhost:8000/entregas/1/finalizar"
+          }
+        },
+        {
+          "name": "Registrar checkpoint",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type",  "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer SEU_TOKEN_AQUI"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"galpao_id\":  1,\n  \"chegou_em\":  \"2024-06-14T08:30:00\",\n  \"observacao\": \"Pacote recebido sem avarias\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": "http://localhost:8000/entregas/1/checkpoints"
+          }
+        },
+        {
+          "name": "Listar checkpoints da entrega",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8000/entregas/1/checkpoints"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Galpões",
+      "item": [
+        {
+          "name": "Cadastrar galpão",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type",  "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer SEU_TOKEN_AQUI"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\":   \"Galpão SP Centro\",\n  \"cidade\": \"São Paulo\",\n  \"estado\": \"SP\",\n  \"lat\":    -23.5505,\n  \"lng\":    -46.6333\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": "http://localhost:8000/galpoes"
+          }
+        },
+        {
+          "name": "Listar galpões ativos",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer SEU_TOKEN_AQUI"}],
+            "url": "http://localhost:8000/galpoes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Retreinos (admin)",
+      "item": [
+        {
+          "name": "Status do ciclo de aprendizado",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer SEU_TOKEN_AQUI"}],
+            "url": "http://localhost:8000/retreinos/status"
+          }
+        },
+        {
+          "name": "Listar retreinos",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer SEU_TOKEN_AQUI"}],
+            "url": {
+              "raw": "http://localhost:8000/retreinos?limit=10&offset=0",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["retreinos"],
+              "query": [
+                {"key": "limit",  "value": "10"},
+                {"key": "offset", "value": "0"},
+                {"key": "status", "value": "ok", "disabled": true}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Detalhar retreino",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer SEU_TOKEN_AQUI"}],
+            "url": "http://localhost:8000/retreinos/1"
+          }
+        },
+        {
+          "name": "Disparar retreino manual",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer SEU_TOKEN_AQUI"}],
+            "url": "http://localhost:8000/retreinos/disparar"
+          }
+        }
+      ]
+    }
+  ]
+}

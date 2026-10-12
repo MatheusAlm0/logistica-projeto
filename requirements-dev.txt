@@ -1,0 +1,6 @@
+# Dependências de desenvolvimento e teste
+-r requirements.txt
+
+pytest==8.3.4
+pytest-cov==6.0.0
+httpx==0.28.0    # já em requirements.txt; garante versão para testes
