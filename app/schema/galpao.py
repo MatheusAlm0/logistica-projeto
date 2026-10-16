@@ -11,6 +11,8 @@ class GalpaoCreate(BaseModel):
     estado: str
     lat: Optional[float] = None
     lng: Optional[float] = None
+    tipo: str = "galpao"
+    permite_retirada: bool = False
 
     def model_post_init(self, __context):
         self.estado = self.estado.upper()
@@ -25,6 +27,8 @@ class GalpaoResponse(BaseModel):
     estado: str
     lat: Optional[float] = None
     lng: Optional[float] = None
+    tipo: str = "galpao"
+    permite_retirada: bool = False
     ativo: bool
 
     model_config = {"from_attributes": True}

@@ -1,12 +1,17 @@
 """Endpoints REST para entregas."""
+from datetime import date, datetime
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_usuario_logado, requer_empresa
 from app.core.database import get_db
 from app.job.retreino_job import verificar_e_retreinar
+from app.model.checkpoint import Checkpoint
+from app.model.entrega import Entrega
+from app.model.galpao import Galpao
 from app.model.usuario import Usuario
 from app.schema.entrega import (
     EntregaCriadaResponse,
@@ -20,21 +25,63 @@ from app.service import entrega_service
 
 router = APIRouter(prefix="/entregas", tags=["entregas"])
 
+TRANSICOES_VALIDAS: dict[str, set[str]] = {
+    "pendente": {"em_transito", "cancelado"},
+    "em_transito": {"entregue", "cancelado"},
+    "atrasada": {"em_transito", "entregue", "cancelado"},
+}
+
 
 def _cliente_id_ou_none(usuario: Usuario) -> Optional[str]:
     """Admin vê tudo (retorna None); empresa vê só as suas."""
     return None if usuario.role == "admin" else usuario.cliente_id
 
 
+class EntregaCreateWithHubs(EntregaCreate):
+    hubs_planejados: list[int] = []
+
+
+class EditarEntregaRequest(BaseModel):
+    data_prevista: Optional[datetime] = None
+    peso_g: Optional[float] = None
+    valor: Optional[float] = None
+    frete: Optional[float] = None
+
+
+class AtualizarStatusRequest(BaseModel):
+    status: str
+
+
+def _to_response(entrega: Entrega) -> EntregaResponse:
+    ultima = entrega.previsoes[-1] if entrega.previsoes else None
+    return EntregaResponse(
+        **{k: getattr(entrega, k) for k in EntregaResponse.model_fields if hasattr(entrega, k)},
+        ultima_previsao=PrevisaoEmbutida.model_validate(ultima) if ultima else None,
+    )
+
+
 @router.post("", response_model=EntregaCriadaResponse, status_code=201)
 def criar_entrega(
-    body: EntregaCreate,
+    body: EntregaCreateWithHubs,
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(requer_empresa),
 ):
     resultado = entrega_service.criar(db, body.model_dump(), cliente_id=usuario.cliente_id)
     entrega = resultado["entrega"]
     previsao_resultado = resultado["previsao"]
+
+    for galpao_id in body.hubs_planejados:
+        galpao = db.get(Galpao, galpao_id)
+        if galpao and galpao.ativo:
+            db.add(Checkpoint(
+                entrega_id=entrega.id,
+                galpao_id=galpao.id,
+                registrado_por=usuario.id,
+                observacao="Hub planejado",
+            ))
+    if body.hubs_planejados:
+        db.commit()
+        db.refresh(entrega)
 
     ultima_previsao = entrega.previsoes[-1] if entrega.previsoes else None
 
@@ -107,3 +154,68 @@ def finalizar_entrega(
         **{k: getattr(entrega, k) for k in EntregaResponse.model_fields if hasattr(entrega, k)},
         ultima_previsao=PrevisaoEmbutida.model_validate(ultima) if ultima else None,
     )
+
+
+@router.delete("/{entrega_id}", status_code=204)
+def deletar_entrega(
+    entrega_id: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(requer_empresa),
+):
+    entrega = db.get(Entrega, entrega_id)
+    if not entrega or entrega.cliente_id != usuario.cliente_id:
+        raise HTTPException(404, "Entrega não encontrada")
+    if entrega.status in ("entregue", "em_transito"):
+        raise HTTPException(422, f"Entrega com status '{entrega.status}' não pode ser removida")
+    for p in list(entrega.previsoes):
+        db.delete(p)
+    for c in list(entrega.checkpoints):
+        db.delete(c)
+    db.delete(entrega)
+    db.commit()
+
+
+@router.patch("/{entrega_id}/editar", response_model=EntregaResponse)
+def editar_entrega(
+    entrega_id: int,
+    body: EditarEntregaRequest,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(requer_empresa),
+):
+    entrega = db.get(Entrega, entrega_id)
+    if not entrega or entrega.cliente_id != usuario.cliente_id:
+        raise HTTPException(404, "Entrega não encontrada")
+    if body.data_prevista is not None:
+        if body.data_prevista.date() < date.today():
+            raise HTTPException(422, "data_prevista não pode ser anterior a hoje")
+        entrega.data_prevista = body.data_prevista
+    if body.peso_g is not None:
+        entrega.peso_g = body.peso_g
+    if body.valor is not None:
+        entrega.valor = body.valor
+    if body.frete is not None:
+        entrega.frete = body.frete
+    db.commit()
+    db.refresh(entrega)
+    return _to_response(entrega)
+
+
+@router.patch("/{entrega_id}/status", response_model=EntregaResponse)
+def atualizar_status_entrega(
+    entrega_id: int,
+    body: AtualizarStatusRequest,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(requer_empresa),
+):
+    entrega = db.get(Entrega, entrega_id)
+    if not entrega or entrega.cliente_id != usuario.cliente_id:
+        raise HTTPException(404, "Entrega não encontrada")
+    permitidos = TRANSICOES_VALIDAS.get(entrega.status, set())
+    if body.status not in permitidos:
+        raise HTTPException(422, f"Não é possível mudar de '{entrega.status}' para '{body.status}'")
+    entrega.status = body.status
+    if body.status == "entregue":
+        entrega.data_entregue = datetime.now()
+    db.commit()
+    db.refresh(entrega)
+    return _to_response(entrega)

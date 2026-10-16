@@ -10,6 +10,9 @@ import DashboardHome from "@/pages/Dashboard"
 import EntregasPage from "@/pages/Dashboard/Entregas"
 import EntregaDetalhePage from "@/pages/Dashboard/Entregas/Detalhe"
 import GalpoesPage from "@/pages/Dashboard/Galpoes"
+import FrotaPage from "@/pages/Dashboard/Frota"
+import CotacaoPage from "@/pages/Dashboard/Cotacao"
+import FinanceiroPage from "@/pages/Dashboard/Financeiro"
 import AdminLayout from "@/pages/Admin/Layout"
 import AdminHome from "@/pages/Admin"
 import EmpresasPage from "@/pages/Admin/Empresas"
@@ -31,6 +34,9 @@ export default function App() {
                 <Route path="entregas" element={<EntregasPage />} />
                 <Route path="entregas/:id" element={<EntregaDetalhePage />} />
                 <Route path="galpoes" element={<GalpoesPage />} />
+                <Route path="frota" element={<FrotaPage />} />
+                <Route path="cotacao" element={<CotacaoPage />} />
+                <Route path="financeiro" element={<FinanceiroPage />} />
               </Route>
             </Route>
 

@@ -3,50 +3,75 @@ import { useGalpoes } from "@/hooks/useGalpoes"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Card, CardContent } from "@/components/ui/card"
 import { UFS } from "@/constants"
-import { Plus, MapPin, Warehouse } from "lucide-react"
+import { Plus, MapPin, Warehouse, UserCheck } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
 
-const empty = { nome: "", cidade: "", estado: "", lat: "", lng: "" }
+const TIPO_LABEL: Record<string, string> = {
+  galpao: "Galpão",
+  hub: "Hub Logístico",
+  centro_logistico: "Centro Logístico",
+  loja: "Loja",
+  ponto_retirada: "Ponto de Retirada",
+}
+
+const empty = { nome: "", cidade: "", estado: "", rua: "", numero: "", bairro: "", cep: "", tipo: "galpao", permite_retirada: false }
 
 export default function GalpoesPage() {
-  const { galpoes, isLoading, fetch, criar } = useGalpoes()
+  const { galpoes, isLoading, fetch: recarregar, criar } = useGalpoes()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(empty)
   const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => { fetch() }, []) // eslint-disable-line
+  useEffect(() => { recarregar() }, []) // eslint-disable-line
 
-  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
+  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
 
   const handleSubmit = async () => {
-    if (!form.nome || !form.cidade || !form.estado) {
-      return alert("Preencha nome, cidade e estado.")
+    if (!form.nome || !form.cidade || !form.estado || !form.rua) {
+      return alert("Preencha nome, rua, cidade e estado.")
     }
     setSubmitting(true)
     try {
+      const q = encodeURIComponent(
+        `${form.rua}, ${form.numero}, ${form.bairro}, ${form.cep}, ${form.cidade}, ${form.estado}, Brasil`
+      )
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${q}&countrycodes=br&limit=1`,
+        { headers: { "Accept-Language": "pt-BR" } }
+      )
+      const results = await res.json()
+      if (!results.length) {
+        toast({ title: "Endereço não encontrado. Verifique os dados.", variant: "destructive" })
+        return
+      }
+      const { lat, lon } = results[0]
       await criar({
         nome: form.nome,
         cidade: form.cidade,
         estado: form.estado,
-        lat: form.lat ? Number(form.lat) : undefined,
-        lng: form.lng ? Number(form.lng) : undefined,
+        lat: Number(lat),
+        lng: Number(lon),
+        tipo: form.tipo,
+        permite_retirada: form.permite_retirada,
       })
       setOpen(false)
       setForm(empty)
-    } catch { /* handled */ }
+    } catch { /* handled by hook */ }
     finally { setSubmitting(false) }
   }
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold">Galpões</h1>
+        <h1 className="text-xl font-semibold">Unidades</h1>
         <Button onClick={() => setOpen(true)}>
           <Plus size={16} />
-          Novo galpão
+          Nova unidade
         </Button>
       </div>
 
@@ -55,7 +80,7 @@ export default function GalpoesPage() {
       ) : galpoes.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Warehouse className="mx-auto mb-3 opacity-30" size={40} />
-          <p className="text-sm">Nenhum galpão cadastrado ainda.</p>
+          <p className="text-sm">Nenhuma unidade cadastrada ainda.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -67,7 +92,19 @@ export default function GalpoesPage() {
                     <Warehouse size={16} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{g.nome}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold truncate">{g.nome}</p>
+                      {g.tipo && (
+                        <Badge variant="secondary" className="text-xs shrink-0">
+                          {TIPO_LABEL[g.tipo] ?? g.tipo}
+                        </Badge>
+                      )}
+                      {g.permite_retirada && (
+                        <span title="Permite retirada" className="text-primary shrink-0">
+                          <UserCheck size={14} />
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">{g.cidade} / {g.estado}</p>
                     {g.lat != null && g.lng != null && (
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
@@ -86,7 +123,7 @@ export default function GalpoesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo galpão</DialogTitle>
+            <DialogTitle>Nova unidade</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -106,14 +143,52 @@ export default function GalpoesPage() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Tipo de unidade</Label>
+              <Select value={form.tipo} onValueChange={(v) => set("tipo", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="galpao">Galpão</SelectItem>
+                  <SelectItem value="hub">Hub Logístico</SelectItem>
+                  <SelectItem value="centro_logistico">Centro Logístico</SelectItem>
+                  <SelectItem value="loja">Loja</SelectItem>
+                  <SelectItem value="ponto_retirada">Ponto de Retirada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-start gap-3 pt-1">
+              <input
+                id="permite_retirada"
+                type="checkbox"
+                checked={form.permite_retirada}
+                onChange={(e) => set("permite_retirada", e.target.checked)}
+                className="mt-0.5 accent-primary"
+              />
               <div>
-                <Label>Latitude (opcional)</Label>
-                <Input type="number" step="any" placeholder="-23.5489" value={form.lat} onChange={(e) => set("lat", e.target.value)} />
+                <Label htmlFor="permite_retirada" className="cursor-pointer">Permite retirada pelo cliente</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Marque se clientes podem retirar encomendas nesta unidade
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <Label>Rua *</Label>
+                <Input placeholder="Av. Paulista" value={form.rua} onChange={(e) => set("rua", e.target.value)} />
               </div>
               <div>
-                <Label>Longitude (opcional)</Label>
-                <Input type="number" step="any" placeholder="-46.6388" value={form.lng} onChange={(e) => set("lng", e.target.value)} />
+                <Label>Número</Label>
+                <Input placeholder="1000" value={form.numero} onChange={(e) => set("numero", e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Bairro</Label>
+                <Input placeholder="Bela Vista" value={form.bairro} onChange={(e) => set("bairro", e.target.value)} />
+              </div>
+              <div>
+                <Label>CEP</Label>
+                <Input placeholder="01310-100" value={form.cep} onChange={(e) => set("cep", e.target.value)} />
               </div>
             </div>
           </div>

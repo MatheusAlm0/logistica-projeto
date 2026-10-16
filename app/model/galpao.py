@@ -15,4 +15,6 @@ class Galpao(Base):
     estado: Mapped[str] = mapped_column(String(2), nullable=False)
     lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     lng: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    tipo: Mapped[str] = mapped_column(String(30), nullable=False, server_default="galpao")
+    permite_retirada: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

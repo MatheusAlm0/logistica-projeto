@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Package, Warehouse, LogOut, Users } from "lucide-react"
+import { LayoutDashboard, Package, Warehouse, LogOut, Users, Calculator, Truck, DollarSign } from "lucide-react"
 
 type Role = "empresa" | "admin"
 
@@ -10,7 +10,10 @@ const LINKS: Record<Role, { to: string; label: string; icon: React.ElementType; 
   empresa: [
     { to: "/dashboard",         label: "Início",   icon: LayoutDashboard, end: true },
     { to: "/dashboard/entregas", label: "Entregas", icon: Package },
-    { to: "/dashboard/galpoes",  label: "Galpões",  icon: Warehouse },
+    { to: "/dashboard/galpoes",  label: "Unidades", icon: Warehouse },
+    { to: "/dashboard/cotacao",    label: "Cotação",    icon: Calculator },
+    { to: "/dashboard/financeiro", label: "Financeiro", icon: DollarSign },
+    { to: "/dashboard/frota",      label: "Minha Frota", icon: Truck },
   ],
   admin: [
     { to: "/admin",          label: "Início",    icon: LayoutDashboard, end: true },

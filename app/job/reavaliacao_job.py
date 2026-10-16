@@ -70,7 +70,7 @@ def reavaliar_entregas_pendentes() -> None:
 
         for entrega in pendentes:
             # --- entrega atrasada: prazo já expirou --------------------------
-            if entrega.data_prevista < now:
+            if entrega.data_prevista < now and entrega.status == "pendente":
                 entrega.status = "atrasada"
                 entrega.data_prevista_revisada = _adicionar_dias_uteis(now, 3)
                 log.info("entrega %d marcada como atrasada; nova previsão: %s",

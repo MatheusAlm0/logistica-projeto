@@ -9,6 +9,7 @@ from app.controller import (
     admin_controller,
     auth_controller,
     checkpoint_controller,
+    cotacao_controller,
     entrega_controller,
     galpao_controller,
     previsao_controller,
@@ -43,6 +44,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(cotacao_controller.router)
 app.include_router(admin_controller.router)
 app.include_router(auth_controller.router)
 app.include_router(previsao_controller.router)

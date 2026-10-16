@@ -44,3 +44,20 @@ export async function createCheckpoint(
   })
   return data
 }
+
+export async function deletarEntrega(id: number): Promise<void> {
+  await api.delete(`/entregas/${id}`)
+}
+
+export async function editarEntrega(
+  id: number,
+  body: { data_prevista?: string; peso_g?: number; valor?: number; frete?: number }
+): Promise<Entrega> {
+  const { data } = await api.patch<Entrega>(`/entregas/${id}/editar`, body)
+  return data
+}
+
+export async function atualizarStatus(id: number, status: string): Promise<Entrega> {
+  const { data } = await api.patch<Entrega>(`/entregas/${id}/status`, { status })
+  return data
+}

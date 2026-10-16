@@ -9,9 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import StatusBadge from "@/components/StatusBadge"
 import { UFS } from "@/constants"
-import { Plus } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
+import { deletarEntrega, editarEntrega, atualizarStatus } from "@/api/entregas"
+import type { Entrega } from "@/types"
+import { Plus, Pencil, RefreshCw, Trash2 } from "lucide-react"
 
 const STATUS_OPTS = [
   { value: "", label: "Todos" },
@@ -22,10 +26,24 @@ const STATUS_OPTS = [
   { value: "cancelado", label: "Cancelado" },
 ]
 
+const TRANSICOES: Record<string, string[]> = {
+  pendente: ["em_transito", "cancelado"],
+  em_transito: ["entregue", "cancelado"],
+  atrasada: ["em_transito", "entregue", "cancelado"],
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  pendente: "Pendente",
+  em_transito: "Em trânsito",
+  entregue: "Entregue",
+  cancelado: "Cancelado",
+  atrasada: "Atrasada",
+}
+
 const empty = {
   peso_g: "", valor_reais: "", frete_reais: "",
   estado_origem: "", estado_destino: "", data_prevista: "",
-  galpao_ids: [] as number[],
+  hubs_planejados: [] as number[],
 }
 
 function fmtDate(iso?: string) {
@@ -42,6 +60,18 @@ export default function EntregasPage() {
   const [form, setForm] = useState(empty)
   const [submitting, setSubmitting] = useState(false)
 
+  // Edit modal
+  const [editOpen, setEditOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<Entrega | null>(null)
+  const [editForm, setEditForm] = useState({ data_prevista: "", peso_g: "", valor: "", frete: "" })
+  const [editSubmitting, setEditSubmitting] = useState(false)
+
+  // Status modal
+  const [statusOpen, setStatusOpen] = useState(false)
+  const [statusTarget, setStatusTarget] = useState<Entrega | null>(null)
+  const [newStatus, setNewStatus] = useState("")
+  const [statusSubmitting, setStatusSubmitting] = useState(false)
+
   useEffect(() => {
     fetchEntregas(filterStatus ? { status: filterStatus } : undefined)
   }, [filterStatus]) // eslint-disable-line
@@ -52,12 +82,16 @@ export default function EntregasPage() {
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
-  const toggleGalpao = (id: number) => {
+  const toggleHub = (id: number) => {
     setForm((f) => ({
       ...f,
-      galpao_ids: f.galpao_ids.includes(id) ? f.galpao_ids.filter((g) => g !== id) : [...f.galpao_ids, id],
+      hubs_planejados: f.hubs_planejados.includes(id)
+        ? f.hubs_planejados.filter((g) => g !== id)
+        : [...f.hubs_planejados, id],
     }))
   }
+
+  const today = new Date().toISOString().split("T")[0]
 
   const handleSubmit = async () => {
     if (!form.peso_g || !form.valor_reais || !form.frete_reais || !form.data_prevista) {
@@ -74,8 +108,9 @@ export default function EntregasPage() {
           estado_destino: form.estado_destino || undefined,
           data_pedido: new Date().toISOString(),
           data_prevista: `${form.data_prevista}T23:59:00`,
+          hubs_planejados: form.hubs_planejados,
         },
-        form.galpao_ids
+        [] // backend handles hub checkpoints via hubs_planejados
       )
       setOpen(false)
       setForm(empty)
@@ -84,7 +119,74 @@ export default function EntregasPage() {
     finally { setSubmitting(false) }
   }
 
-  const today = new Date().toISOString().split("T")[0]
+  const openEdit = (e: Entrega) => {
+    setEditTarget(e)
+    const dp = e.data_prevista_revisada ?? e.data_prevista
+    setEditForm({
+      data_prevista: dp ? dp.split("T")[0] : "",
+      peso_g: String(e.peso_g),
+      valor: "",
+      frete: "",
+    })
+    setEditOpen(true)
+  }
+
+  const handleEditSubmit = async () => {
+    if (!editTarget) return
+    if (editForm.data_prevista && editForm.data_prevista < today) {
+      return toast({ title: "Data prevista não pode ser anterior a hoje", variant: "destructive" })
+    }
+    setEditSubmitting(true)
+    try {
+      await editarEntrega(editTarget.id, {
+        data_prevista: editForm.data_prevista ? `${editForm.data_prevista}T23:59:00` : undefined,
+        peso_g: editForm.peso_g ? Number(editForm.peso_g) : undefined,
+        valor: editForm.valor ? Number(editForm.valor) : undefined,
+        frete: editForm.frete ? Number(editForm.frete) : undefined,
+      })
+      setEditOpen(false)
+      fetchEntregas(filterStatus ? { status: filterStatus } : undefined)
+      toast({ title: "Entrega atualizada" })
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Erro ao atualizar"
+      toast({ title: "Erro", description: msg, variant: "destructive" })
+    } finally { setEditSubmitting(false) }
+  }
+
+  const openStatus = (e: Entrega) => {
+    setStatusTarget(e)
+    setNewStatus("")
+    setStatusOpen(true)
+  }
+
+  const handleStatusSubmit = async () => {
+    if (!statusTarget || !newStatus) return
+    setStatusSubmitting(true)
+    try {
+      await atualizarStatus(statusTarget.id, newStatus)
+      setStatusOpen(false)
+      fetchEntregas(filterStatus ? { status: filterStatus } : undefined)
+      toast({ title: "Status atualizado" })
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Erro ao atualizar status"
+      toast({ title: "Erro", description: msg, variant: "destructive" })
+    } finally { setStatusSubmitting(false) }
+  }
+
+  const handleDeletar = async (e: Entrega) => {
+    const label = e.codigo_rastreio ?? `#${e.id}`
+    if (!window.confirm(`Tem certeza que deseja excluir a entrega ${label}? Esta ação não pode ser desfeita.`)) return
+    try {
+      await deletarEntrega(e.id)
+      fetchEntregas(filterStatus ? { status: filterStatus } : undefined)
+      toast({ title: "Entrega excluída" })
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Erro ao excluir"
+      toast({ title: "Erro", description: msg, variant: "destructive" })
+    }
+  }
+
+  const hubsFiltrados = galpoes.filter((g) => g.tipo === "hub" || g.tipo === "centro_logistico")
 
   return (
     <div className="space-y-5">
@@ -123,24 +225,43 @@ export default function EntregasPage() {
                 <TableHead>Destino</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Previsão</TableHead>
-                <TableHead />
+                <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entregas.map((e) => (
-                <TableRow key={e.id}>
-                  <TableCell className="font-mono text-xs">{e.codigo_rastreio ?? `#${e.id}`}</TableCell>
-                  <TableCell>{e.estado_origem ?? "—"}</TableCell>
-                  <TableCell>{e.estado_destino ?? "—"}</TableCell>
-                  <TableCell><StatusBadge status={e.status} /></TableCell>
-                  <TableCell className="text-sm">{fmtDate(e.data_prevista_revisada ?? e.data_prevista)}</TableCell>
-                  <TableCell>
-                    <Button size="sm" variant="ghost" onClick={() => navigate(`/dashboard/entregas/${e.id}`)}>
-                      Ver
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {entregas.map((e) => {
+                const podeAtualizarStatus = !!TRANSICOES[e.status]
+                const podeDeletar = e.status === "pendente" || e.status === "atrasada"
+                return (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-mono text-xs">{e.codigo_rastreio ?? `#${e.id}`}</TableCell>
+                    <TableCell>{e.estado_origem ?? "—"}</TableCell>
+                    <TableCell>{e.estado_destino ?? "—"}</TableCell>
+                    <TableCell><StatusBadge status={e.status} /></TableCell>
+                    <TableCell className="text-sm">{fmtDate(e.data_prevista_revisada ?? e.data_prevista)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => navigate(`/dashboard/entregas/${e.id}`)}>
+                          Ver
+                        </Button>
+                        <Button size="icon" variant="ghost" title="Editar" onClick={() => openEdit(e)}>
+                          <Pencil size={14} />
+                        </Button>
+                        {podeAtualizarStatus && (
+                          <Button size="icon" variant="ghost" title="Atualizar status" onClick={() => openStatus(e)}>
+                            <RefreshCw size={14} />
+                          </Button>
+                        )}
+                        {podeDeletar && (
+                          <Button size="icon" variant="ghost" title="Excluir" onClick={() => handleDeletar(e)}>
+                            <Trash2 size={14} />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </div>
@@ -187,25 +308,29 @@ export default function EntregasPage() {
               <Label>Data prevista de entrega *</Label>
               <Input type="date" min={today} value={form.data_prevista} onChange={(e) => set("data_prevista", e.target.value)} />
             </div>
-            {galpoes.length > 0 && (
-              <div>
-                <Label>Checkpoint inicial (galpão)</Label>
+            <div>
+              <Label>Hubs planejados (opcional)</Label>
+              {hubsFiltrados.length === 0 ? (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Nenhum hub cadastrado. Adicione em Unidades.
+                </p>
+              ) : (
                 <div className="mt-2 space-y-2 max-h-36 overflow-y-auto border rounded-lg p-3">
-                  {galpoes.map((g) => (
+                  {hubsFiltrados.map((g) => (
                     <div key={g.id} className="flex items-center gap-2">
                       <Checkbox
-                        id={`g-${g.id}`}
-                        checked={form.galpao_ids.includes(g.id)}
-                        onCheckedChange={() => toggleGalpao(g.id)}
+                        id={`hub-${g.id}`}
+                        checked={form.hubs_planejados.includes(g.id)}
+                        onCheckedChange={() => toggleHub(g.id)}
                       />
-                      <label htmlFor={`g-${g.id}`} className="text-sm cursor-pointer">
+                      <label htmlFor={`hub-${g.id}`} className="text-sm cursor-pointer">
                         {g.nome} — {g.cidade}/{g.estado}
                       </label>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
@@ -214,6 +339,111 @@ export default function EntregasPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
+      </Dialog>
+
+      {/* Modal de edição */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        {editTarget && (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar entrega — {editTarget.codigo_rastreio ?? `#${editTarget.id}`}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Data prevista de entrega</Label>
+                <Input
+                  type="date"
+                  min={today}
+                  value={editForm.data_prevista}
+                  onChange={(e) => setEditForm((f) => ({ ...f, data_prevista: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Peso (g)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder={String(editTarget.peso_g)}
+                  value={editForm.peso_g}
+                  onChange={(e) => setEditForm((f) => ({ ...f, peso_g: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Valor (R$)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="—"
+                    value={editForm.valor}
+                    onChange={(e) => setEditForm((f) => ({ ...f, valor: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label>Frete (R$)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="—"
+                    value={editForm.frete}
+                    onChange={(e) => setEditForm((f) => ({ ...f, frete: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
+              <Button onClick={handleEditSubmit} disabled={editSubmitting}>
+                {editSubmitting ? "Salvando..." : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
+
+      {/* Modal de atualização de status */}
+      <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
+        {statusTarget && (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                Atualizar status — {statusTarget.codigo_rastreio ?? `#${statusTarget.id}`}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Novo status</Label>
+                <Select value={newStatus} onValueChange={setNewStatus}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {(TRANSICOES[statusTarget.status] ?? []).map((s) => (
+                      <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {newStatus === "entregue" && (
+                <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2">
+                  <p className="text-sm text-amber-600 dark:text-amber-400">
+                    Isso registrará a data de entrega como agora. Esta ação não pode ser desfeita.
+                  </p>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Status atual:{" "}
+                <Badge variant="secondary" className="text-xs">
+                  {STATUS_LABELS[statusTarget.status] ?? statusTarget.status}
+                </Badge>
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStatusOpen(false)}>Cancelar</Button>
+              <Button onClick={handleStatusSubmit} disabled={statusSubmitting || !newStatus}>
+                {statusSubmitting ? "Confirmando..." : "Confirmar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
       </Dialog>
     </div>
   )
