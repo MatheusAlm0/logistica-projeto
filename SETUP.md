@@ -78,6 +78,8 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 
 > Nunca commite o `.env`. Ele já está no `.gitignore`.
 
+Mais detalhes, atalho para gerar e gravar de uma vez e erros comuns: [SECRET_KEY.md](SECRET_KEY.md).
+
 ---
 
 ## 4. Banco de dados
