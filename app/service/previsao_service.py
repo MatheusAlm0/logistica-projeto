@@ -1,5 +1,6 @@
 from typing import Any
 
+from app.core.datas import normalizar_datetime
 from app.core.exceptions import RegraDeNegocioError
 from app.integration.clima import obter_chuva_mm
 from app.integration.rota import obter_rota
@@ -12,10 +13,10 @@ UFS = {
 
 
 def _normalizar(d: dict[str, Any]) -> dict[str, Any]:
-    """Padroniza os dados: datas sem fuso horário e UF em maiúsculas."""
+    """Padroniza os dados: datas no horário local de SP sem fuso e UF em maiúsculas."""
     d = dict(d)
-    d["data_pedido"] = d["data_pedido"].replace(tzinfo=None)
-    d["data_prevista"] = d["data_prevista"].replace(tzinfo=None)
+    d["data_pedido"] = normalizar_datetime(d["data_pedido"])
+    d["data_prevista"] = normalizar_datetime(d["data_prevista"])
     for campo in ("estado_origem", "estado_destino"):
         if d.get(campo):
             d[campo] = d[campo].upper()

@@ -17,7 +17,7 @@ from app.controller import (
     retreino_controller,
 )
 from app.core.database import Base, engine
-from app.core.exceptions import RegraDeNegocioError
+from app.core.exceptions import RecursoNaoEncontradoError, RegraDeNegocioError
 from app.job.reavaliacao_job import reavaliar_entregas_pendentes
 from app.ml.predictor import ModeloNaoEncontrado, predictor
 import app.model  # noqa: F401 — registra todos os modelos no metadata do Base
@@ -58,6 +58,12 @@ app.include_router(rastreio_controller.router)
 @app.exception_handler(RegraDeNegocioError)
 async def regra_handler(request: Request, exc: RegraDeNegocioError):
     return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(RecursoNaoEncontradoError)
+async def nao_encontrado_handler(request: Request, exc: RecursoNaoEncontradoError):
+    # mesmo 404 para "não existe" e "pertence a outro cliente" — não revela existência
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
 @app.exception_handler(ModeloNaoEncontrado)

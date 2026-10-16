@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import get_usuario_logado, requer_empresa
 from app.core.database import get_db
+from app.core.datas import DataHoraLocal
 from app.job.retreino_job import verificar_e_retreinar
 from app.model.checkpoint import Checkpoint
 from app.model.entrega import Entrega
@@ -42,7 +43,7 @@ class EntregaCreateWithHubs(EntregaCreate):
 
 
 class EditarEntregaRequest(BaseModel):
-    data_prevista: Optional[datetime] = None
+    data_prevista: Optional[DataHoraLocal] = None
     peso_g: Optional[float] = None
     valor: Optional[float] = None
     frete: Optional[float] = None

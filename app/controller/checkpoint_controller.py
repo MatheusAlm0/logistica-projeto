@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import requer_empresa
 from app.core.database import get_db
+from app.core.datas import FUSO_LOCAL
 from app.model.checkpoint import Checkpoint
 from app.model.entrega import Entrega
 from app.model.galpao import Galpao
@@ -39,7 +40,9 @@ def registrar_checkpoint(
     checkpoint = Checkpoint(
         entrega_id=entrega_id,
         galpao_id=body.galpao_id,
-        chegou_em=body.chegou_em,
+        # coluna timestamptz: grava explicitamente como horário de SP (o schema já
+        # normalizou para local sem fuso), sem depender do TimeZone da sessão do banco
+        chegou_em=body.chegou_em.replace(tzinfo=FUSO_LOCAL),
         registrado_por=usuario.id,
         observacao=body.observacao,
     )
@@ -50,10 +53,13 @@ def registrar_checkpoint(
 
 
 @router.get("/{entrega_id}/checkpoints", response_model=list[CheckpointResponse])
-def listar_checkpoints(entrega_id: int, db: Session = Depends(get_db)):
-    entrega = buscar_entrega(db, entrega_id)
-    if not entrega:
-        raise HTTPException(status_code=404, detail=f"entrega {entrega_id} não encontrada")
+def listar_checkpoints(
+    entrega_id: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(requer_empresa),
+):
+    # mesma regra de tenant do registro: entrega de outro cliente → 404
+    _entrega_acessivel(db, entrega_id, usuario)
     return list(
         db.scalars(
             select(Checkpoint)

@@ -572,6 +572,11 @@ def salvar_orcamento(
     usuario: Usuario = Depends(requer_empresa),
 ):
     veiculo_id = body.veiculos_elegiveis[0].id if body.veiculos_elegiveis else None
+    # o id vem do cliente: só vincula veículo da própria frota (evita referência cross-tenant)
+    if veiculo_id is not None:
+        v = db.get(Veiculo, veiculo_id)
+        if not v or v.cliente_id != usuario.cliente_id:
+            raise HTTPException(404, "Veículo não encontrado")
     orcamento = Orcamento(
         codigo=f"ORC-{uuid.uuid4().hex[:8].upper()}",
         cliente_id=usuario.cliente_id,
@@ -665,10 +670,11 @@ def aprovar_orcamento(
     if orc.status not in ("rascunho", "enviado"):
         raise HTTPException(422, f"Orçamento com status '{orc.status}' não pode ser aprovado")
 
+    # datetimes (não strings): entrega_service.criar normaliza para horário local de SP
     now = datetime.now(tz=timezone.utc)
     dados_entrega = {
-        "data_pedido": now.isoformat(),
-        "data_prevista": (now + timedelta(days=orc.prazo_dias)).isoformat(),
+        "data_pedido": now,
+        "data_prevista": now + timedelta(days=orc.prazo_dias),
         "peso_g": orc.peso_kg * 1000,
         "valor": orc.valor_frete,
         "frete": orc.valor_frete,

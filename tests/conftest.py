@@ -15,6 +15,12 @@ Estratégia:
 """
 from __future__ import annotations
 
+import os
+
+# SECRET_KEY é obrigatória (e validada) em app.core.config: define uma chave de teste
+# válida ANTES de qualquer import do app, sem depender do .env local.
+os.environ["SECRET_KEY"] = "chave-de-teste-com-mais-de-32-caracteres-0123456789"
+
 from typing import Generator
 from unittest.mock import MagicMock, patch
 

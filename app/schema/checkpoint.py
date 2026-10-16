@@ -3,12 +3,14 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from app.core.datas import DataHoraLocal
+
 from app.schema.galpao import GalpaoResponse
 
 
 class CheckpointCreate(BaseModel):
     galpao_id: int
-    chegou_em: datetime
+    chegou_em: DataHoraLocal
     observacao: Optional[str] = None
 
 

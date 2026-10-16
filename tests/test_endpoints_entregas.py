@@ -199,9 +199,9 @@ class TestGetEntregaById:
         data = client.get(f"/entregas/{criado['id']}").json()
         assert data["ultima_previsao"] is not None
 
-    def test_id_inexistente_retorna_422(self, client):
+    def test_id_inexistente_retorna_404(self, client):
         resp = client.get("/entregas/99999")
-        assert resp.status_code == 422
+        assert resp.status_code == 404
 
     def test_campos_esperados_na_resposta(self, client):
         criado = client.post("/entregas", json=PAYLOAD).json()
@@ -244,9 +244,9 @@ class TestFinalizarEntrega:
         resp = client.patch(f"/entregas/{entrega['id']}/finalizar", json=FINALIZAR_PAYLOAD)
         assert resp.status_code == 422
 
-    def test_finalizar_id_inexistente_retorna_422(self, client):
+    def test_finalizar_id_inexistente_retorna_404(self, client):
         resp = client.patch("/entregas/99999/finalizar", json=FINALIZAR_PAYLOAD)
-        assert resp.status_code == 422
+        assert resp.status_code == 404
 
     def test_data_entregue_antes_do_pedido_retorna_422(self, client):
         entrega = self._criar(client)

@@ -4,12 +4,15 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from app.core.datas import DataHoraLocal
+
 
 # ── Request ──────────────────────────────────────────────────────────────────
 
+# DataHoraLocal: datas com fuso são convertidas para America/Sao_Paulo e gravadas sem fuso
 class EntregaCreate(BaseModel):
-    data_pedido: datetime
-    data_prevista: datetime
+    data_pedido: DataHoraLocal
+    data_prevista: DataHoraLocal
     peso_g: float
     valor: float
     frete: float
@@ -23,7 +26,7 @@ class EntregaCreate(BaseModel):
 
 
 class FinalizarRequest(BaseModel):
-    data_entregue: datetime
+    data_entregue: DataHoraLocal
 
 
 # ── Response ──────────────────────────────────────────────────────────────────

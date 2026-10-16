@@ -14,3 +14,4 @@ pyarrow>=18.1.0
 apscheduler==3.10.4
 python-jose[cryptography]>=3.3.0
 bcrypt>=4.0.0
+tzdata>=2024.1   # base de fusos para zoneinfo (necessária no Windows)

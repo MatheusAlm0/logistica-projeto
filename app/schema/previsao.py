@@ -1,12 +1,13 @@
-from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from app.core.datas import DataHoraLocal
+
 
 class PrevisaoRequest(BaseModel):
-    data_pedido: datetime
-    data_prevista: datetime
+    data_pedido: DataHoraLocal
+    data_prevista: DataHoraLocal
     peso_g: float
     valor: float
     frete: float

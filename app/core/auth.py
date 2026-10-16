@@ -22,7 +22,11 @@ def hash_senha(senha: str) -> str:
 
 
 def verificar_senha(senha: str, senha_hash: str) -> bool:
-    return bcrypt.checkpw(senha.encode(), senha_hash.encode())
+    try:
+        return bcrypt.checkpw(senha.encode(), senha_hash.encode())
+    except ValueError:
+        # bcrypt 5: senha > 72 bytes ou hash malformado → credencial inválida, não 500
+        return False
 
 
 def criar_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
