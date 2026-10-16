@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/hooks/use-toast"
+import { getErrorMessage } from "@/lib/errors"
 import type { Veiculo, FaixaPreco } from "@/types"
 import { getVeiculos, updateVeiculo, getTabelaPreco, saveTabelaPreco } from "@/api/cotacao"
 import { Plus, Pencil, Trash2 } from "lucide-react"
@@ -51,7 +52,9 @@ export default function FinanceiroPage() {
         setTLoaded(true)
       })
       .catch(() => setTLoaded(true))
-    getVeiculos().then(setVeiculos).catch(() => {}).finally(() => setVLoading(false))
+    getVeiculos().then(setVeiculos)
+      .catch((err: unknown) => toast({ title: "Erro ao carregar veículos", description: getErrorMessage(err, "Tente novamente."), variant: "destructive" }))
+      .finally(() => setVLoading(false))
   }, [])
 
   const addFaixa = () => setFaixas((f) => [...f, { _key: Date.now(), peso_min_kg: 0, preco_por_km: 0 }])
@@ -72,8 +75,8 @@ export default function FinanceiroPage() {
         faixas: faixas.map(({ _key: _, ...f }) => f),
       })
       toast({ title: "Tabela de preços salva" })
-    } catch {
-      toast({ title: "Erro ao salvar tabela", variant: "destructive" })
+    } catch (err: unknown) {
+      toast({ title: "Erro ao salvar tabela", description: getErrorMessage(err, "Tente novamente."), variant: "destructive" })
     } finally { setTSaving(false) }
   }
 
@@ -92,8 +95,8 @@ export default function FinanceiroPage() {
       setVeiculos((prev) => prev.map((v) => v.id === editVeiculo.id ? updated : v))
       toast({ title: "Preço atualizado" })
       setEditVeiculo(null)
-    } catch {
-      toast({ title: "Erro ao salvar preço", variant: "destructive" })
+    } catch (err: unknown) {
+      toast({ title: "Erro ao salvar preço", description: getErrorMessage(err, "Tente novamente."), variant: "destructive" })
     } finally { setPSaving(false) }
   }
 
@@ -109,8 +112,8 @@ export default function FinanceiroPage() {
       setVeiculos((prev) => prev.map((v) => v.id === editVeiculo.id ? updated : v))
       toast({ title: "Preço próprio removido — veículo usará tabela global" })
       setEditVeiculo(null)
-    } catch {
-      toast({ title: "Erro ao limpar preço", variant: "destructive" })
+    } catch (err: unknown) {
+      toast({ title: "Erro ao limpar preço", description: getErrorMessage(err, "Tente novamente."), variant: "destructive" })
     } finally { setPSaving(false) }
   }
 

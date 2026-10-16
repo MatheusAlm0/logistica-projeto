@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
 
-function fmtDate(iso?: string) {
+function fmtDate(iso?: string | null) {
   if (!iso) return "—"
   return new Date(iso).toLocaleDateString("pt-BR")
 }
@@ -118,10 +118,9 @@ export default function RastreioPage() {
                   </div>
                 )}
               </div>
-              {data.ultima_previsao && (
+              {data.nivel_risco && (
                 <p className="text-xs text-muted-foreground mt-3">
-                  Risco de atraso: <span className="font-medium">{data.ultima_previsao.nivel}</span>{" "}
-                  ({(data.ultima_previsao.probabilidade * 100).toFixed(0)}%)
+                  Risco de atraso: <span className="font-medium">{data.nivel_risco}</span>
                 </p>
               )}
             </div>

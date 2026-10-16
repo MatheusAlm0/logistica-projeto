@@ -83,7 +83,7 @@ export default function DashboardHome() {
                     <TableCell className="font-mono text-xs">{e.codigo_rastreio ?? `#${e.id}`}</TableCell>
                     <TableCell>{e.estado_destino ?? "—"}</TableCell>
                     <TableCell><StatusBadge status={e.status} /></TableCell>
-                    <TableCell className="text-sm">{fmtDate(e.data_prevista_revisada ?? e.data_prevista)}</TableCell>
+                    <TableCell className="text-sm">{fmtDate(e.data_prevista)}</TableCell>
                     <TableCell>
                       <Button size="sm" variant="ghost" onClick={() => navigate(`/dashboard/entregas/${e.id}`)}>
                         Ver

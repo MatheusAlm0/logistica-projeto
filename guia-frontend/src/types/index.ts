@@ -16,10 +16,14 @@ export interface TokenResponse {
 
 export type StatusEntrega = "pendente" | "em_transito" | "entregue" | "atrasada" | "cancelado"
 
+// Espelha PrevisaoEmbutida (app/schema/entrega.py)
 export interface Previsao {
   id: number
   nivel: string
   probabilidade: number
+  modelo_versao: string
+  chuva_mm?: number | null
+  rota_fonte?: string | null
   criado_em: string
 }
 
@@ -53,65 +57,126 @@ export interface CheckpointResponse {
   observacao?: string
 }
 
+// Espelha EntregaResponse (app/schema/entrega.py)
 export interface Entrega {
   id: number
-  peso_g: number
-  valor_reais: number
-  frete_reais: number
-  estado_origem?: string
-  estado_destino?: string
+  criado_em: string
   data_pedido: string
   data_prevista: string
   data_entregue?: string
-  data_prevista_revisada?: string
+  peso_g: number
+  valor: number
+  frete: number
+  estado_origem?: string
+  estado_destino?: string
+  distancia_km?: number
   status: StatusEntrega
   codigo_rastreio?: string
-  cliente_id?: string
   ultima_previsao?: Previsao
 }
 
+// Espelha EntregaCriadaResponse — resposta do POST /entregas
+export interface EntregaCriada extends Entrega {
+  previsao?: Record<string, unknown> | null
+}
+
+export interface EntregaListResponse {
+  total: number
+  items: Entrega[]
+}
+
+// Espelha EntregaCreate + hubs_planejados (EntregaCreateWithHubs no controller).
+// Datas sem fuso: o backend grava timestamp sem timezone (horário local).
 export interface EntregaCreate {
-  peso_g: number
-  valor_reais: number
-  frete_reais: number
-  estado_origem?: string
-  estado_destino?: string
   data_pedido: string
   data_prevista: string
+  peso_g: number
+  valor: number
+  frete: number
+  estado_origem?: string
+  estado_destino?: string
   distancia_km?: number
+  origem_lat?: number
+  origem_lng?: number
+  destino_lat?: number
+  destino_lng?: number
   hubs_planejados?: number[]
 }
 
+// Espelha EditarEntregaRequest (PATCH /entregas/{id}/editar)
+export interface EntregaEditar {
+  data_prevista?: string
+  peso_g?: number
+  valor?: number
+  frete?: number
+}
+
+// Espelha CheckpointCreate (app/schema/checkpoint.py)
+export interface CheckpointCreate {
+  galpao_id: number
+  chegou_em: string
+  observacao?: string
+}
+
+// Espelha o schema público de rastreio (app/schema/rastreio.py): sem ids,
+// observações, autor do registro nem dados do modelo — só o nível de risco.
+// CheckpointResponse (rota autenticada) também é compatível com RastreioCheckpoint.
+export interface RastreioGalpao {
+  nome: string
+  cidade: string
+  estado: string
+  lat?: number | null
+  lng?: number | null
+}
+
+export interface RastreioCheckpoint {
+  chegou_em: string
+  galpao: RastreioGalpao | null
+}
+
 export interface RastreioData {
-  id: number
   codigo_rastreio?: string
   status: StatusEntrega
-  estado_origem?: string
-  estado_destino?: string
-  data_pedido: string
-  data_prevista: string
-  data_entregue?: string
-  data_prevista_revisada?: string
-  ultima_previsao?: Previsao
-  checkpoints: CheckpointResponse[]
+  estado_origem?: string | null
+  estado_destino?: string | null
+  data_prevista?: string | null
+  data_prevista_revisada?: string | null
+  data_entregue?: string | null
+  nivel_risco?: string | null
+  checkpoints: RastreioCheckpoint[]
 }
 
+// Espelha RetreinoResponse (app/schema/retreino.py)
 export interface Retreino {
   id: number
-  status: string
+  status: string           // rodando | ok | erro
   iniciado_em: string
-  finalizado_em?: string
-  duracao_s?: number
-  modelo_arquivo?: string
-  roc_auc?: number
-  pr_auc?: number
-  amostras?: number
-  erro?: string
+  concluido_em?: string | null
+  duracao_segundos?: number | null
+  versao?: string | null
+  roc_auc?: number | null
+  pr_auc?: number | null
+  n_amostras?: number | null
+  erro?: string | null
 }
 
+// Espelha RetreinoListResponse
+export interface RetreinoListResponse {
+  total: number
+  pendentes: number
+  items: Retreino[]
+}
+
+// Resposta de POST /retreinos/disparar
 export interface DispararRetreinoResponse {
   mensagem: string
-  link: string
+  acompanhe: string
+}
+
+// Resposta de GET /health
+export interface HealthCheck {
+  status: string
+  modelo: string
 }
 
 // ── Cotação ────────────────────────────────────────────────────────────────

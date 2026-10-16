@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/hooks/use-toast"
+import { getErrorMessage } from "@/lib/errors"
 import type { ResultadoCotacao, Orcamento, Galpao, GalpaoRota } from "@/types"
 import { calcularCotacao, salvarOrcamento, getOrcamentos, aprovarOrcamento, deletarOrcamento, getPontosRetirada } from "@/api/cotacao"
 import { getGalpoes } from "@/api/galpoes"
@@ -70,7 +71,7 @@ export default function CotacaoPage() {
   useEffect(() => {
     getGalpoes()
       .then(setGalpoes)
-      .catch(() => toast({ title: "Erro ao carregar galpões", variant: "destructive" }))
+      .catch((err: unknown) => toast({ title: "Erro ao carregar galpões", description: getErrorMessage(err, "Tente novamente."), variant: "destructive" }))
       .finally(() => setGLoading(false))
   }, [])
 
@@ -84,7 +85,9 @@ export default function CotacaoPage() {
   useEffect(() => {
     if (tab === "salvos") {
       setOLoading(true)
-      getOrcamentos().then(setOrcamentos).catch(() => {}).finally(() => setOLoading(false))
+      getOrcamentos().then(setOrcamentos)
+        .catch((err: unknown) => toast({ title: "Erro ao carregar orçamentos", description: getErrorMessage(err, "Tente novamente."), variant: "destructive" }))
+        .finally(() => setOLoading(false))
     }
   }, [tab])
 
@@ -147,8 +150,7 @@ export default function CotacaoPage() {
       })
       setResultado(res)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-        ?? "Erro ao calcular. Verifique a tabela de preços e as coordenadas dos galpões."
+      const msg = getErrorMessage(err, "Erro ao calcular. Verifique a tabela de preços e as coordenadas dos galpões.")
       toast({ title: "Erro", description: msg, variant: "destructive" })
     } finally {
       setCalculando(false)
@@ -162,8 +164,8 @@ export default function CotacaoPage() {
       const orc = await salvarOrcamento(resultado)
       toast({ title: "Orçamento salvo", description: orc.codigo })
       setOrcamentos((prev) => [orc, ...prev])
-    } catch {
-      toast({ title: "Erro ao salvar", variant: "destructive" })
+    } catch (err: unknown) {
+      toast({ title: "Erro ao salvar", description: getErrorMessage(err, "Tente novamente."), variant: "destructive" })
     } finally { setSalvando(false) }
   }
 
@@ -174,7 +176,7 @@ export default function CotacaoPage() {
       setOrcamentos((prev) => prev.filter((o) => o.id !== id))
       toast({ title: "Orçamento removido" })
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Erro ao remover"
+      const msg = getErrorMessage(err, "Erro ao remover")
       toast({ title: "Erro", description: msg, variant: "destructive" })
     }
   }
@@ -185,7 +187,7 @@ export default function CotacaoPage() {
       setOrcamentos((prev) => prev.map((o) => o.id === id ? updated : o))
       toast({ title: "Orçamento aprovado e entrega criada" })
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Erro ao aprovar"
+      const msg = getErrorMessage(err, "Erro ao aprovar")
       toast({ title: "Erro", description: msg, variant: "destructive" })
     }
   }

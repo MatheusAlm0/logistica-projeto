@@ -1,7 +1,7 @@
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
-import type { RastreioData } from "@/types"
+import type { RastreioData, RastreioGalpao } from "@/types"
 import { CAPITAL_COORDS } from "@/constants"
 
 // Fix default Leaflet icon (Vite/webpack issue)
@@ -17,21 +17,24 @@ interface Props {
 }
 
 export default function MapaRastreio({ rastreio }: Props) {
-  const withCoords = rastreio.checkpoints.filter(
-    (cp) => cp.galpao.lat != null && cp.galpao.lng != null
-  )
+  // só checkpoints com galpão georreferenciado entram no mapa
+  const withCoords = rastreio.checkpoints
+    .map((cp) => cp.galpao)
+    .filter((g): g is RastreioGalpao & { lat: number; lng: number } =>
+      g != null && g.lat != null && g.lng != null
+    )
 
   const originCoords = rastreio.estado_origem ? CAPITAL_COORDS[rastreio.estado_origem] : undefined
   const destCoords = rastreio.estado_destino ? CAPITAL_COORDS[rastreio.estado_destino] : undefined
 
   const center: [number, number] =
     withCoords.length > 0
-      ? [withCoords[0].galpao.lat!, withCoords[0].galpao.lng!]
+      ? [withCoords[0].lat, withCoords[0].lng]
       : (originCoords ?? destCoords ?? [-15.7801, -47.9292])
 
   const line: [number, number][] = [
     ...(originCoords ? [originCoords] : []),
-    ...withCoords.map((cp): [number, number] => [cp.galpao.lat!, cp.galpao.lng!]),
+    ...withCoords.map((g): [number, number] => [g.lat, g.lng]),
     ...(destCoords ? [destCoords] : []),
   ]
 
@@ -47,9 +50,9 @@ export default function MapaRastreio({ rastreio }: Props) {
             <Popup>Origem · {rastreio.estado_origem}</Popup>
           </Marker>
         )}
-        {withCoords.map((cp) => (
-          <Marker key={cp.id} position={[cp.galpao.lat!, cp.galpao.lng!]}>
-            <Popup>{cp.galpao.nome} — {cp.galpao.cidade}/{cp.galpao.estado}</Popup>
+        {withCoords.map((g, i) => (
+          <Marker key={`${g.lat},${g.lng}-${i}`} position={[g.lat, g.lng]}>
+            <Popup>{g.nome} — {g.cidade}/{g.estado}</Popup>
           </Marker>
         ))}
         {destCoords && (

@@ -1,5 +1,5 @@
 import api from "./axios"
-import type { Retreino, DispararRetreinoResponse } from "@/types"
+import type { RetreinoListResponse, DispararRetreinoResponse, HealthCheck } from "@/types"
 
 export interface RetreinesParams {
   status?: string
@@ -7,8 +7,8 @@ export interface RetreinesParams {
   offset?: number
 }
 
-export async function getRetreinos(params?: RetreinesParams): Promise<Retreino[]> {
-  const { data } = await api.get<Retreino[]>("/retreinos", { params })
+export async function getRetreinos(params?: RetreinesParams): Promise<RetreinoListResponse> {
+  const { data } = await api.get<RetreinoListResponse>("/retreinos", { params })
   return data
 }
 
@@ -17,7 +17,7 @@ export async function dispararRetreino(): Promise<DispararRetreinoResponse> {
   return data
 }
 
-export async function getHealthCheck(): Promise<{ status: string; modelo: string }> {
-  const { data } = await api.get<{ status: string; modelo: string }>("/health")
+export async function getHealthCheck(): Promise<HealthCheck> {
+  const { data } = await api.get<HealthCheck>("/health")
   return data
 }

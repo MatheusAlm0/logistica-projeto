@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import ThemeToggle from "@/components/ThemeToggle"
+import { getErrorMessage, getErrorStatus } from "@/lib/errors"
 
 export default function LoginPage() {
   const { user, login } = useAuth()
@@ -23,14 +24,13 @@ export default function LoginPage() {
       await login(email, senha)
       // redirect is handled by useEffect in AuthContext + ProtectedRoute
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number; data?: { detail?: string } } }).response?.status
-      const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+      const status = getErrorStatus(err)
       if (status === 403) {
         setError("Conta aguardando aprovação do administrador.")
       } else if (status === 401) {
         setError("E-mail ou senha incorretos.")
       } else {
-        setError(detail ?? "Erro ao entrar. Tente novamente.")
+        setError(getErrorMessage(err, "Erro ao entrar. Tente novamente."))
       }
     } finally {
       setIsLoading(false)

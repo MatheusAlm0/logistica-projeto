@@ -8,6 +8,8 @@ import MapaRastreio from "@/components/MapaRastreio"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "@/hooks/use-toast"
+import { getErrorMessage } from "@/lib/errors"
+import { toLocalISOString } from "@/lib/utils"
 import { ArrowLeft, ExternalLink } from "lucide-react"
 
 function fmtDate(iso?: string) {
@@ -28,7 +30,7 @@ export default function EntregaDetalhePage() {
     const idNum = parseInt(id)
     Promise.all([getEntrega(idNum), getCheckpoints(idNum)])
       .then(([e, cps]) => { setEntrega(e); setCheckpoints(cps) })
-      .catch(() => toast({ title: "Erro ao carregar entrega", variant: "destructive" }))
+      .catch((err: unknown) => toast({ title: "Erro ao carregar entrega", description: getErrorMessage(err, "Tente novamente."), variant: "destructive" }))
       .finally(() => setIsLoading(false))
   }, [id])
 
@@ -36,11 +38,11 @@ export default function EntregaDetalhePage() {
     if (!entrega) return
     setFinalizando(true)
     try {
-      const updated = await finalizarEntrega(entrega.id, new Date().toISOString())
+      const updated = await finalizarEntrega(entrega.id, toLocalISOString())
       setEntrega(updated)
       toast({ title: "Entrega finalizada" })
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Erro ao finalizar"
+      const msg = getErrorMessage(err, "Erro ao finalizar")
       toast({ title: "Erro", description: msg, variant: "destructive" })
     } finally {
       setFinalizando(false)
@@ -100,10 +102,10 @@ export default function EntregaDetalhePage() {
               ["Origem", entrega.estado_origem],
               ["Destino", entrega.estado_destino],
               ["Peso", entrega.peso_g ? `${entrega.peso_g} g` : undefined],
-              ["Valor", entrega.valor_reais ? `R$ ${entrega.valor_reais.toFixed(2)}` : undefined],
-              ["Frete", entrega.frete_reais ? `R$ ${entrega.frete_reais.toFixed(2)}` : undefined],
+              ["Valor", entrega.valor != null ? `R$ ${entrega.valor.toFixed(2)}` : undefined],
+              ["Frete", entrega.frete != null ? `R$ ${entrega.frete.toFixed(2)}` : undefined],
               ["Pedido em", fmtDate(entrega.data_pedido)],
-              ["Previsão", fmtDate(entrega.data_prevista_revisada ?? entrega.data_prevista)],
+              ["Previsão", fmtDate(entrega.data_prevista)],
               ...(entrega.data_entregue ? [["Entregue em", fmtDate(entrega.data_entregue)]] : []),
             ].map(([label, value]) => (
               <div key={String(label)}>

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "@/hooks/use-toast"
+import { getErrorMessage } from "@/lib/errors"
 import type { Veiculo } from "@/types"
 import { getVeiculos, createVeiculo, updateVeiculo, deleteVeiculo } from "@/api/cotacao"
 import { Plus, Pencil, Trash2, Truck } from "lucide-react"
@@ -27,7 +28,9 @@ export default function FrotaPage() {
   const [vSubmit, setVSubmit] = useState(false)
 
   useEffect(() => {
-    getVeiculos().then(setVeiculos).catch(() => {}).finally(() => setVLoading(false))
+    getVeiculos().then(setVeiculos)
+      .catch((err: unknown) => toast({ title: "Erro ao carregar veículos", description: getErrorMessage(err, "Tente novamente."), variant: "destructive" }))
+      .finally(() => setVLoading(false))
   }, [])
 
   const sv = (k: string, v: string) => setVForm((f) => ({ ...f, [k]: v }))
@@ -69,8 +72,8 @@ export default function FrotaPage() {
         toast({ title: "Veículo cadastrado" })
       }
       setVOpen(false)
-    } catch {
-      toast({ title: "Erro ao salvar veículo", variant: "destructive" })
+    } catch (err: unknown) {
+      toast({ title: "Erro ao salvar veículo", description: getErrorMessage(err, "Tente novamente."), variant: "destructive" })
     } finally { setVSubmit(false) }
   }
 
@@ -79,8 +82,8 @@ export default function FrotaPage() {
       await deleteVeiculo(id)
       setVeiculos((prev) => prev.filter((v) => v.id !== id))
       toast({ title: "Veículo desativado" })
-    } catch {
-      toast({ title: "Erro ao desativar", variant: "destructive" })
+    } catch (err: unknown) {
+      toast({ title: "Erro ao desativar", description: getErrorMessage(err, "Tente novamente."), variant: "destructive" })
     }
   }
 

@@ -13,10 +13,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401) {
+    const url: string = error.config?.url ?? ""
+    const isAuthRequest = url.startsWith("/auth/")
+    const tokenEnviado = !!error.config?.headers?.Authorization
+    // 401 em /auth/* (ex.: senha errada no login) é tratado pela própria tela.
+    // Só encerra a sessão quando um token foi enviado e rejeitado (expirado/inválido).
+    if (error.response?.status === 401 && !isAuthRequest && tokenEnviado) {
       localStorage.removeItem("guia_token")
       localStorage.removeItem("guia_user")
-      window.location.href = "/login"
+      if (window.location.pathname !== "/login") window.location.href = "/login"
     }
     return Promise.reject(error)
   }

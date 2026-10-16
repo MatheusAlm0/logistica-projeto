@@ -1,5 +1,13 @@
 import api from "./axios"
-import type { Entrega, EntregaCreate, CheckpointResponse } from "@/types"
+import type {
+  Entrega,
+  EntregaCreate,
+  EntregaCriada,
+  EntregaEditar,
+  EntregaListResponse,
+  CheckpointCreate,
+  CheckpointResponse,
+} from "@/types"
 
 export interface EntregasParams {
   status?: string
@@ -9,8 +17,8 @@ export interface EntregasParams {
 }
 
 export async function getEntregas(params?: EntregasParams): Promise<Entrega[]> {
-  const { data } = await api.get<{ total: number; items: Entrega[] }>("/entregas", { params })
-  return Array.isArray(data) ? data : (data.items ?? [])
+  const { data } = await api.get<EntregaListResponse>("/entregas", { params })
+  return data.items ?? []
 }
 
 export async function getEntrega(id: number): Promise<Entrega> {
@@ -18,8 +26,8 @@ export async function getEntrega(id: number): Promise<Entrega> {
   return data
 }
 
-export async function createEntrega(payload: EntregaCreate): Promise<Entrega> {
-  const { data } = await api.post<Entrega>("/entregas", payload)
+export async function createEntrega(payload: EntregaCreate): Promise<EntregaCriada> {
+  const { data } = await api.post<EntregaCriada>("/entregas", payload)
   return data
 }
 
@@ -35,13 +43,9 @@ export async function getCheckpoints(entregaId: number): Promise<CheckpointRespo
 
 export async function createCheckpoint(
   entregaId: number,
-  galpaoId: number,
-  observacao?: string
+  payload: CheckpointCreate
 ): Promise<CheckpointResponse> {
-  const { data } = await api.post<CheckpointResponse>(`/entregas/${entregaId}/checkpoints`, {
-    galpao_id: galpaoId,
-    observacao,
-  })
+  const { data } = await api.post<CheckpointResponse>(`/entregas/${entregaId}/checkpoints`, payload)
   return data
 }
 
@@ -49,10 +53,7 @@ export async function deletarEntrega(id: number): Promise<void> {
   await api.delete(`/entregas/${id}`)
 }
 
-export async function editarEntrega(
-  id: number,
-  body: { data_prevista?: string; peso_g?: number; valor?: number; frete?: number }
-): Promise<Entrega> {
+export async function editarEntrega(id: number, body: EntregaEditar): Promise<Entrega> {
   const { data } = await api.patch<Entrega>(`/entregas/${id}/editar`, body)
   return data
 }

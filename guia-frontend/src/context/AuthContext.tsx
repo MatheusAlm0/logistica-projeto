@@ -32,7 +32,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, senha: string) => {
     const { access_token } = await apiLogin(email, senha)
     localStorage.setItem("guia_token", access_token)
-    const me = await apiMe()
+    let me: User
+    try {
+      me = await apiMe()
+    } catch (err) {
+      localStorage.removeItem("guia_token")
+      throw err
+    }
     localStorage.setItem("guia_user", JSON.stringify(me))
     setUser(me)
   }, [])

@@ -2,6 +2,8 @@ import { useState, useCallback } from "react"
 import { getEntregas, createEntrega, finalizarEntrega, createCheckpoint } from "@/api/entregas"
 import type { Entrega, EntregaCreate } from "@/types"
 import { toast } from "@/hooks/use-toast"
+import { getErrorMessage } from "@/lib/errors"
+import { toLocalISOString } from "@/lib/utils"
 
 export function useEntregas() {
   const [entregas, setEntregas] = useState<Entrega[]>([])
@@ -14,26 +16,41 @@ export function useEntregas() {
     try {
       const data = await getEntregas({ ...params, limit: 200 })
       setEntregas(data)
-    } catch {
-      setError("Erro ao carregar entregas")
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Erro ao carregar entregas"))
     } finally {
       setIsLoading(false)
     }
   }, [])
 
+  /**
+   * Cria a entrega e, opcionalmente, registra checkpoints adicionais (galpaoIds).
+   * Os hubs planejados enviados em `payload.hubs_planejados` são registrados pelo backend.
+   */
   const criar = useCallback(async (payload: EntregaCreate, galpaoIds: number[] = []) => {
     setIsLoading(true)
     try {
       const entrega = await createEntrega(payload)
+      const falhas: string[] = []
       for (const gid of galpaoIds) {
-        try { await createCheckpoint(entrega.id, gid) } catch { /* best effort */ }
+        try {
+          await createCheckpoint(entrega.id, { galpao_id: gid, chegou_em: toLocalISOString() })
+        } catch (err: unknown) {
+          falhas.push(getErrorMessage(err, `galpão ${gid}`))
+        }
       }
-      toast({ title: "Entrega criada", description: `Código: ${entrega.codigo_rastreio}` })
+      toast({ title: "Entrega criada", description: `Código: ${entrega.codigo_rastreio ?? `#${entrega.id}`}` })
+      if (falhas.length) {
+        toast({
+          title: `Falha ao registrar ${falhas.length} checkpoint(s)`,
+          description: falhas.join(" | "),
+          variant: "destructive",
+        })
+      }
       setEntregas((prev) => [entrega, ...prev])
       return entrega
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Erro ao criar entrega"
-      toast({ title: "Erro", description: msg, variant: "destructive" })
+      toast({ title: "Erro", description: getErrorMessage(err, "Erro ao criar entrega"), variant: "destructive" })
       throw err
     } finally {
       setIsLoading(false)
@@ -47,8 +64,7 @@ export function useEntregas() {
       toast({ title: "Entrega finalizada com sucesso" })
       return updated
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Erro ao finalizar"
-      toast({ title: "Erro", description: msg, variant: "destructive" })
+      toast({ title: "Erro", description: getErrorMessage(err, "Erro ao finalizar"), variant: "destructive" })
       throw err
     }
   }, [])

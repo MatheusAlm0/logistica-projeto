@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react"
 import { getRetreinos, dispararRetreino, getHealthCheck } from "@/api/retreinos"
-import type { Retreino } from "@/types"
+import type { Retreino, HealthCheck, RetreinoListResponse } from "@/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/hooks/use-toast"
+import { getErrorMessage } from "@/lib/errors"
 import { Brain, CheckCircle, XCircle, Loader2 } from "lucide-react"
 
 function fmtDate(iso?: string) {
@@ -21,13 +22,27 @@ function statusBadge(s: string) {
 
 export default function AdminHome() {
   const [retreinos, setRetreinos] = useState<Retreino[]>([])
-  const [health, setHealth] = useState<{ status: string; modelo: string } | null>(null)
+  const [totalRetreinos, setTotalRetreinos] = useState<number | null>(null)
+  const [health, setHealth] = useState<HealthCheck | null>(null)
   const [loadingRetreino, setLoadingRetreino] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  function aplicarRetreinos(res: RetreinoListResponse) {
+    setRetreinos(res.items)
+    setTotalRetreinos(res.total)
+  }
+
+  function carregarRetreinos() {
+    return getRetreinos({ limit: 10 })
+      .then(aplicarRetreinos)
+      .catch((err: unknown) =>
+        toast({ title: "Erro ao carregar retreinos", description: getErrorMessage(err, "Tente novamente."), variant: "destructive" })
+      )
+  }
+
   useEffect(() => {
     Promise.all([
-      getRetreinos({ limit: 10 }).then(setRetreinos),
+      carregarRetreinos(),
       getHealthCheck().then(setHealth).catch(() => {}),
     ]).finally(() => setIsLoading(false))
   }, [])
@@ -37,9 +52,9 @@ export default function AdminHome() {
     try {
       const res = await dispararRetreino()
       toast({ title: "Retreino iniciado", description: res.mensagem })
-      setTimeout(() => getRetreinos({ limit: 10 }).then(setRetreinos), 1500)
+      setTimeout(carregarRetreinos, 1500)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Erro ao disparar retreino"
+      const msg = getErrorMessage(err, "Erro ao disparar retreino")
       toast({ title: "Erro", description: msg, variant: "destructive" })
     } finally {
       setLoadingRetreino(false)
@@ -79,7 +94,7 @@ export default function AdminHome() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Retreinos realizados</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{retreinos.length}</p>
+            <p className="text-3xl font-bold">{totalRetreinos ?? "—"}</p>
           </CardContent>
         </Card>
       </div>
@@ -118,9 +133,9 @@ export default function AdminHome() {
                     <TableCell>{statusBadge(r.status)}</TableCell>
                     <TableCell className="font-mono text-sm">{r.roc_auc?.toFixed(4) ?? "—"}</TableCell>
                     <TableCell className="font-mono text-sm">{r.pr_auc?.toFixed(4) ?? "—"}</TableCell>
-                    <TableCell>{r.amostras ?? "—"}</TableCell>
+                    <TableCell>{r.n_amostras ?? "—"}</TableCell>
                     <TableCell className="text-sm">{fmtDate(r.iniciado_em)}</TableCell>
-                    <TableCell className="text-sm">{r.duracao_s != null ? `${r.duracao_s.toFixed(1)}s` : "—"}</TableCell>
+                    <TableCell className="text-sm">{r.duracao_segundos != null ? `${r.duracao_segundos.toFixed(1)}s` : "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

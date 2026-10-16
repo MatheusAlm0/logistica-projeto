@@ -14,7 +14,9 @@ import StatusBadge from "@/components/StatusBadge"
 import { UFS } from "@/constants"
 import { toast } from "@/hooks/use-toast"
 import { deletarEntrega, editarEntrega, atualizarStatus } from "@/api/entregas"
-import type { Entrega } from "@/types"
+import { getErrorMessage } from "@/lib/errors"
+import { toLocalISOString, todayLocal } from "@/lib/utils"
+import type { Entrega, EntregaEditar } from "@/types"
 import { Plus, Pencil, RefreshCw, Trash2 } from "lucide-react"
 
 const STATUS_OPTS = [
@@ -41,7 +43,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const empty = {
-  peso_g: "", valor_reais: "", frete_reais: "",
+  peso_g: "", valor: "", frete: "",
   estado_origem: "", estado_destino: "", data_prevista: "",
   hubs_planejados: [] as number[],
 }
@@ -91,10 +93,10 @@ export default function EntregasPage() {
     }))
   }
 
-  const today = new Date().toISOString().split("T")[0]
+  const today = todayLocal()
 
   const handleSubmit = async () => {
-    if (!form.peso_g || !form.valor_reais || !form.frete_reais || !form.data_prevista) {
+    if (!form.peso_g || !form.valor || !form.frete || !form.data_prevista) {
       return alert("Preencha todos os campos obrigatórios.")
     }
     setSubmitting(true)
@@ -102,11 +104,11 @@ export default function EntregasPage() {
       await criar(
         {
           peso_g: Number(form.peso_g),
-          valor_reais: Number(form.valor_reais),
-          frete_reais: Number(form.frete_reais),
+          valor: Number(form.valor),
+          frete: Number(form.frete),
           estado_origem: form.estado_origem || undefined,
           estado_destino: form.estado_destino || undefined,
-          data_pedido: new Date().toISOString(),
+          data_pedido: toLocalISOString(),
           data_prevista: `${form.data_prevista}T23:59:00`,
           hubs_planejados: form.hubs_planejados,
         },
@@ -121,34 +123,41 @@ export default function EntregasPage() {
 
   const openEdit = (e: Entrega) => {
     setEditTarget(e)
-    const dp = e.data_prevista_revisada ?? e.data_prevista
     setEditForm({
-      data_prevista: dp ? dp.split("T")[0] : "",
+      data_prevista: e.data_prevista ? e.data_prevista.split("T")[0] : "",
       peso_g: String(e.peso_g),
-      valor: "",
-      frete: "",
+      valor: e.valor != null ? String(e.valor) : "",
+      frete: e.frete != null ? String(e.frete) : "",
     })
     setEditOpen(true)
   }
 
   const handleEditSubmit = async () => {
     if (!editTarget) return
-    if (editForm.data_prevista && editForm.data_prevista < today) {
-      return toast({ title: "Data prevista não pode ser anterior a hoje", variant: "destructive" })
+    // Envia só o que mudou (o backend rejeita data_prevista no passado,
+    // então reenviar a data original de uma entrega atrasada falharia).
+    const body: EntregaEditar = {}
+    if (editForm.data_prevista && editForm.data_prevista !== editTarget.data_prevista.split("T")[0]) {
+      if (editForm.data_prevista < today) {
+        return toast({ title: "Data prevista não pode ser anterior a hoje", variant: "destructive" })
+      }
+      body.data_prevista = `${editForm.data_prevista}T23:59:00`
+    }
+    if (editForm.peso_g && Number(editForm.peso_g) !== editTarget.peso_g) body.peso_g = Number(editForm.peso_g)
+    if (editForm.valor && Number(editForm.valor) !== editTarget.valor) body.valor = Number(editForm.valor)
+    if (editForm.frete && Number(editForm.frete) !== editTarget.frete) body.frete = Number(editForm.frete)
+    if (Object.keys(body).length === 0) {
+      setEditOpen(false)
+      return
     }
     setEditSubmitting(true)
     try {
-      await editarEntrega(editTarget.id, {
-        data_prevista: editForm.data_prevista ? `${editForm.data_prevista}T23:59:00` : undefined,
-        peso_g: editForm.peso_g ? Number(editForm.peso_g) : undefined,
-        valor: editForm.valor ? Number(editForm.valor) : undefined,
-        frete: editForm.frete ? Number(editForm.frete) : undefined,
-      })
+      await editarEntrega(editTarget.id, body)
       setEditOpen(false)
       fetchEntregas(filterStatus ? { status: filterStatus } : undefined)
       toast({ title: "Entrega atualizada" })
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Erro ao atualizar"
+      const msg = getErrorMessage(err, "Erro ao atualizar")
       toast({ title: "Erro", description: msg, variant: "destructive" })
     } finally { setEditSubmitting(false) }
   }
@@ -168,7 +177,7 @@ export default function EntregasPage() {
       fetchEntregas(filterStatus ? { status: filterStatus } : undefined)
       toast({ title: "Status atualizado" })
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Erro ao atualizar status"
+      const msg = getErrorMessage(err, "Erro ao atualizar status")
       toast({ title: "Erro", description: msg, variant: "destructive" })
     } finally { setStatusSubmitting(false) }
   }
@@ -181,7 +190,7 @@ export default function EntregasPage() {
       fetchEntregas(filterStatus ? { status: filterStatus } : undefined)
       toast({ title: "Entrega excluída" })
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Erro ao excluir"
+      const msg = getErrorMessage(err, "Erro ao excluir")
       toast({ title: "Erro", description: msg, variant: "destructive" })
     }
   }
@@ -238,7 +247,7 @@ export default function EntregasPage() {
                     <TableCell>{e.estado_origem ?? "—"}</TableCell>
                     <TableCell>{e.estado_destino ?? "—"}</TableCell>
                     <TableCell><StatusBadge status={e.status} /></TableCell>
-                    <TableCell className="text-sm">{fmtDate(e.data_prevista_revisada ?? e.data_prevista)}</TableCell>
+                    <TableCell className="text-sm">{fmtDate(e.data_prevista)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button size="sm" variant="ghost" onClick={() => navigate(`/dashboard/entregas/${e.id}`)}>
@@ -281,11 +290,11 @@ export default function EntregasPage() {
               </div>
               <div>
                 <Label>Valor (R$) *</Label>
-                <Input type="number" min={0} step="0.01" placeholder="99.90" value={form.valor_reais} onChange={(e) => set("valor_reais", e.target.value)} />
+                <Input type="number" min={0} step="0.01" placeholder="99.90" value={form.valor} onChange={(e) => set("valor", e.target.value)} />
               </div>
               <div>
                 <Label>Frete (R$) *</Label>
-                <Input type="number" min={0} step="0.01" placeholder="15.00" value={form.frete_reais} onChange={(e) => set("frete_reais", e.target.value)} />
+                <Input type="number" min={0} step="0.01" placeholder="15.00" value={form.frete} onChange={(e) => set("frete", e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
